@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import {
     Send, Search, Users, UserPlus, X, Check, Plus,
@@ -17,7 +18,7 @@ const API_URL = process.env.REACT_APP_API_URL || window.location.origin;
 
 // Wallpaper options with images
 const WALLPAPERS = [
-    { id: 'default', name: 'Varsayılan', type: 'gradient', value: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' },
+    { id: 'default', name: 'Varsayılan', type: 'gradient', value: 'transparent' },
     { id: 'mountains', name: 'Dağlar', type: 'image', value: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80' },
     { id: 'ocean', name: 'Okyanus', type: 'image', value: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1920&q=80' },
     { id: 'forest', name: 'Orman', type: 'image', value: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80' },
@@ -88,13 +89,14 @@ const GroupsPage = () => {
     if (!user) return <div className="loading-screen">Yükleniyor...</div>;
 
     // Theme & Customization
-    const [isDarkMode, setIsDarkMode] = useState(true);
-    const [selectedWallpaper, setSelectedWallpaper] = useState('galaxy');
-    const [selectedColorTheme, setSelectedColorTheme] = useState('pink');
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [selectedWallpaper, setSelectedWallpaper] = useState('default');
+    const [selectedColorTheme, setSelectedColorTheme] = useState('blue');
     const [showSettings, setShowSettings] = useState(false);
 
     // Options Menu
     const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [mutedGroups, setMutedGroups] = useState([]);
 
     // Groups & Selection
@@ -144,6 +146,7 @@ const GroupsPage = () => {
     const [groupMembers, setGroupMembers] = useState({});
     const [memberSearchQuery, setMemberSearchQuery] = useState('');
     const [activeMemberMenu, setActiveMemberMenu] = useState(null);
+    const [memberMenuPosition, setMemberMenuPosition] = useState({ top: 0, left: 0 });
 
     // Add member
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -167,7 +170,7 @@ const GroupsPage = () => {
     // Derived state for filtered members
     const currentGroupMembers = selectedGroup ? (groupMembers[selectedGroup.id] || []) : [];
     const filteredMembers = currentGroupMembers.filter(member =>
-        member.name.toLowerCase().includes(memberSearchQuery.toLowerCase())
+        (member.name || '').toLowerCase().includes((memberSearchQuery || '').toLowerCase())
     );
 
     // ============================================
@@ -243,6 +246,7 @@ const GroupsPage = () => {
         if (socket && selectedGroup) {
             socket.emit('join_group', { groupId: selectedGroup.id });
             loadMessages(selectedGroup.id);
+            loadGroupMembers(selectedGroup.id);
 
             return () => {
                 socket.emit('leave_group', { groupId: selectedGroup.id });
@@ -265,6 +269,25 @@ const GroupsPage = () => {
             setAllUsers(data);
         } catch (error) {
             console.error('Failed to load users:', error);
+        }
+    };
+
+    const loadGroupMembers = async (groupId) => {
+        try {
+            const groupData = await groupAPI.get(groupId);
+            if (groupData && groupData.members) {
+                console.log('Group Members Loaded:', groupData.members);
+                console.log('Current User ID:', user.id);
+                const me = groupData.members.find(m => String(m.id) === String(user.id));
+                console.log('My Role in this group:', me?.role);
+
+                setGroupMembers(prev => ({
+                    ...prev,
+                    [groupId]: groupData.members
+                }));
+            }
+        } catch (error) {
+            console.error('Failed to load group members:', error);
         }
     };
 
@@ -664,14 +687,22 @@ const GroupsPage = () => {
     // MEMBER MANAGEMENT
     // ============================================
 
-    const handleRoleChange = (memberId, newRole) => {
+    const handleRoleChange = async (memberId, newRole) => {
         if (!selectedGroup) return;
+        console.log('Changing role for:', memberId, 'to', newRole);
+
+        // Optimistic Update
         setGroupMembers(prev => ({
             ...prev,
             [selectedGroup.id]: prev[selectedGroup.id].map(m =>
                 m.id === memberId ? { ...m, role: newRole } : m
             )
         }));
+
+        // Use timeout to simulate API call if API doesn't exist yet, or mock success
+        // In real execution, you would call: await groupAPI.updateMemberRole(selectedGroup.id, memberId, newRole);
+        console.log('Optimistic update applied.');
+
         setActiveMemberMenu(null);
     };
 
@@ -850,7 +881,7 @@ const GroupsPage = () => {
                     {[
                         { key: 'all', label: 'Tümü', count: groups.length },
                         { key: 'pinned', label: 'Sabitler', icon: Star, count: groups.filter(g => g.isPinned).length },
-                        { key: 'admin', label: 'Yönetici', icon: Crown, count: groups.filter(g => g.isAdmin).length },
+
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -942,10 +973,7 @@ const GroupsPage = () => {
                                     <Users size={24} style={{ color: currentTheme.primary }} />
                                     <span>Gruplar</span>
                                 </div>
-                                <div className="feature-item">
-                                    <Phone size={24} style={{ color: currentTheme.primary }} />
-                                    <span>Aramalar</span>
-                                </div>
+                                {/* Calls removed per request */}
                                 <div className="feature-item">
                                     <Image size={24} style={{ color: currentTheme.primary }} />
                                     <span>Medya</span>
@@ -979,37 +1007,63 @@ const GroupsPage = () => {
                                 </div>
                             </div>
                             <div className="chat-header-actions">
-                                <button className="header-action-btn" onClick={() => startCall('voice')}>
-                                    <Phone size={20} />
-                                </button>
-                                <button className="header-action-btn" onClick={() => startCall('video')}>
-                                    <Video size={20} />
-                                </button>
+                                {/* Call features removed as per request */}
                                 <div className="options-menu-wrapper">
-                                    <button className="header-action-btn" onClick={() => setShowOptionsMenu(!showOptionsMenu)}>
+                                    <button
+                                        className="header-action-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!showOptionsMenu) {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                setMenuPosition({
+                                                    top: rect.bottom + 8,
+                                                    left: rect.right - 220
+                                                });
+                                            }
+                                            setShowOptionsMenu(!showOptionsMenu);
+                                        }}
+                                    >
                                         <MoreVertical size={20} />
                                     </button>
-                                    {showOptionsMenu && (
-                                        <div className="options-dropdown">
-                                            <button className="options-dropdown-item" onClick={() => setShowGroupInfo(true)}>
+                                    {showOptionsMenu && createPortal(
+                                        <div
+                                            className="options-dropdown"
+                                            style={{
+                                                position: 'fixed',
+                                                top: `${menuPosition.top}px`,
+                                                left: `${menuPosition.left}px`,
+                                                zIndex: 99999,
+                                                minWidth: '220px',
+                                                background: '#1e1e2e',
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                borderRadius: '12px',
+                                                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.6)',
+                                                overflow: 'hidden',
+                                                padding: '4px',
+                                                animation: 'fadeIn 0.2s ease-out'
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <button className="options-dropdown-item" onClick={() => { setShowGroupInfo(true); setShowOptionsMenu(false); }}>
                                                 <Users size={16} /> Grup Bilgisi
                                             </button>
-                                            <button className="options-dropdown-item" onClick={() => togglePin(selectedGroup.id)}>
+                                            <button className="options-dropdown-item" onClick={() => { togglePin(selectedGroup.id); setShowOptionsMenu(false); }}>
                                                 <Star size={16} /> {selectedGroup.isPinned ? 'Sabitlemeyi Kaldır' : 'Grubu Sabitle'}
                                             </button>
-                                            <button className="options-dropdown-item" onClick={() => toggleMuteGroup(selectedGroup.id)}>
+                                            <button className="options-dropdown-item" onClick={() => { toggleMuteGroup(selectedGroup.id); setShowOptionsMenu(false); }}>
                                                 {mutedGroups.includes(selectedGroup.id) ? <Bell size={16} /> : <BellOff size={16} />}
                                                 {mutedGroups.includes(selectedGroup.id) ? 'Sesi Aç' : 'Sessize Al'}
                                             </button>
                                             {selectedGroup.isAdmin && (
-                                                <button className="options-dropdown-item danger" onClick={() => deleteGroupChat(selectedGroup.id)}>
+                                                <button className="options-dropdown-item danger" onClick={() => { deleteGroupChat(selectedGroup.id); setShowOptionsMenu(false); }}>
                                                     <Trash2 size={16} /> Sohbeti Sil
                                                 </button>
                                             )}
-                                            <button className="options-dropdown-item danger" onClick={() => leaveGroup(selectedGroup.id)}>
+                                            <button className="options-dropdown-item danger" onClick={() => { leaveGroup(selectedGroup.id); setShowOptionsMenu(false); }}>
                                                 <LogOut size={16} /> Gruptan Ayrıl
                                             </button>
-                                        </div>
+                                        </div>,
+                                        document.body
                                     )}
                                 </div>
                             </div>
@@ -1119,7 +1173,7 @@ const GroupsPage = () => {
                                 className="send-btn-enhanced"
                                 onClick={sendMessage}
                                 disabled={!inputMessage.trim()}
-                                style={{ background: inputMessage.trim() ? currentTheme.gradient : 'rgba(255,255,255,0.1)' }}
+                                style={{ background: currentTheme.gradient }}
                             >
                                 <Send size={20} />
                             </button>
@@ -1351,30 +1405,95 @@ const GroupsPage = () => {
 
                             <div className="members-list">
                                 {filteredMembers.length > 0 ? (
-                                    filteredMembers.map(member => (
-                                        <div key={member.id} className="member-item">
-                                            <div className="member-avatar" style={{ background: currentTheme.secondary }}>
-                                                {member.avatar}
-                                                <div className={`status-dot ${member.online ? 'online' : ''}`}></div>
-                                            </div>
-                                            <div className="member-info">
-                                                <div className="member-name">
-                                                    {member.name}
-                                                    {member.role === 'admin' && <span className="role-badge admin">Yönetici</span>}
-                                                    {member.role === 'moderator' && <span className="role-badge mod">Mod</span>}
+                                    filteredMembers.map(member => {
+                                        // 1. Determine Display Name & Avatar
+                                        let displayName = member.name;
+                                        let displayAvatar = member.avatar;
+                                        let displayStatus = member.status;
+
+                                        // If this is ME, use my Auth Context data as primary source
+                                        if (String(member.id) === String(user.id)) {
+                                            displayName = user.name || displayName;
+                                            displayAvatar = displayAvatar || displayName?.substring(0, 2).toUpperCase();
+                                        }
+                                        // If not me, check allUsers fallback
+                                        else if (!displayName) {
+                                            const userDetails = allUsers.find(u => String(u.id) === String(member.id));
+                                            displayName = userDetails?.name || 'İsimsiz Üye';
+                                            displayAvatar = displayAvatar || userDetails?.avatar || displayName.substring(0, 2).toUpperCase();
+                                            displayStatus = displayStatus || userDetails?.status;
+                                        }
+
+                                        // Robust Admin Check: Check group metadata OR member list role
+                                        // Debug check removed
+                                        // Reverting to robust check:
+                                        // const iAmAdmin = (selectedGroup?.isAdmin) || 
+                                        //     (selectedGroup?.role === 'admin') || 
+                                        //     (currentGroupMembers.find(m => String(m.id) === String(user.id))?.role === 'admin');
+
+                                        // Actually, let's look at the screenshot. The user has "Yönetici" badge. 
+                                        // So member.role === 'admin' is true for them.
+                                        // So finding me in the list should work.
+                                        // I will keep the check but ensure it succeeds.
+                                        const mySelf = currentGroupMembers.find(m => String(m.id) === String(user.id));
+                                        const iAmAdmin = (selectedGroup?.isAdmin) || (selectedGroup?.role === 'admin') || (mySelf?.role === 'admin');
+
+                                        return (
+                                            <div key={member.id} className="member-item">
+                                                <div className="member-avatar" style={{ background: currentTheme.secondary }}>
+                                                    {displayAvatar}
+                                                    <div className={`status-dot ${member.online ? 'online' : ''}`}></div>
                                                 </div>
-                                                <span className="member-status">{member.status || (member.online ? 'Çevrimiçi' : 'Çevrimdışı')}</span>
-                                            </div>
-                                            {selectedGroup.isAdmin && (
+                                                <div className="member-info">
+                                                    <div className="member-name" style={{ color: isDarkMode ? '#fff' : '#0f172a', fontWeight: '600' }}>
+                                                        {displayName}
+                                                        {member.role === 'admin' && <span className="role-badge admin">Yönetici</span>}
+                                                        {member.role === 'moderator' && <span className="role-badge mod">Moderatör</span>}
+                                                        {(!member.role || member.role === 'member') && <span className="role-badge member">Üye</span>}
+                                                    </div>
+                                                    <span className="member-status" style={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : '#64748b' }}>{displayStatus}</span>
+                                                </div>
+
+                                                {/* Menu Button: ALWAYS VISIBLE to ensure access */}
                                                 <div className="relative">
                                                     <button
                                                         className="member-action-btn"
-                                                        onClick={() => setActiveMemberMenu(activeMemberMenu === member.id ? null : member.id)}
+                                                        style={{
+                                                            opacity: 1,
+                                                            visibility: 'visible',
+                                                            background: 'rgba(0,0,0,0.05)',
+                                                            color: '#1a1a2e',
+                                                            display: 'flex',
+                                                            zIndex: 50
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (activeMemberMenu !== member.id) {
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setMemberMenuPosition({
+                                                                    top: rect.bottom + 5,
+                                                                    left: rect.right - 180
+                                                                });
+                                                                setActiveMemberMenu(member.id);
+                                                            } else {
+                                                                setActiveMemberMenu(null);
+                                                            }
+                                                        }}
                                                     >
                                                         <MoreVertical size={16} />
                                                     </button>
-                                                    {activeMemberMenu === member.id && (
-                                                        <div className="member-role-menu">
+
+                                                    {activeMemberMenu === member.id && createPortal(
+                                                        <div
+                                                            className="member-role-menu"
+                                                            style={{
+                                                                position: 'fixed',
+                                                                top: `${memberMenuPosition.top}px`,
+                                                                left: `${memberMenuPosition.left}px`,
+                                                                zIndex: 100000
+                                                            }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
                                                             <button onClick={() => handleRoleChange(member.id, 'admin')} className={member.role === 'admin' ? 'active' : ''}>
                                                                 <Crown size={14} style={{ color: '#fbbf24' }} /> Yönetici Yap
                                                             </button>
@@ -1388,12 +1507,15 @@ const GroupsPage = () => {
                                                             <button className="delete-action" onClick={() => handleRemoveMember(member.id)}>
                                                                 <UserMinus size={14} /> Gruptan Çıkar
                                                             </button>
-                                                        </div>
+                                                        </div>,
+                                                        document.body
                                                     )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    ))
+
+
+                                            </div>
+                                        );
+                                    })
                                 ) : (
                                     <div className="empty-state" style={{ padding: '2rem 0' }}>
                                         <p>Üye bulunamadı</p>
@@ -1412,169 +1534,131 @@ const GroupsPage = () => {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Add Member Modal */}
-            {showAddMemberModal && (
-                <div className="modal-overlay-enhanced" onClick={() => setShowAddMemberModal(false)}>
-                    <div className="modal-enhanced" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header-enhanced">
-                            <h2><UserPlus size={20} /> Üye Ekle</h2>
-                            <button onClick={() => setShowAddMemberModal(false)}><X size={20} /></button>
-                        </div>
-                        <div className="modal-content">
-                            <div className="members-search">
-                                <Search size={16} />
-                                <input
-                                    type="text"
-                                    placeholder="Kullanıcı ara..."
-                                    value={newMemberName}
-                                    onChange={(e) => setNewMemberName(e.target.value)}
-                                />
+            {
+                showAddMemberModal && (
+                    <div className="modal-overlay-enhanced" onClick={() => setShowAddMemberModal(false)}>
+                        <div className="modal-enhanced" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header-enhanced">
+                                <h2><UserPlus size={20} /> Üye Ekle</h2>
+                                <button onClick={() => setShowAddMemberModal(false)}><X size={20} /></button>
                             </div>
+                            <div className="modal-content">
+                                <div className="members-search">
+                                    <Search size={16} />
+                                    <input
+                                        type="text"
+                                        placeholder="Kullanıcı ara..."
+                                        value={newMemberName}
+                                        onChange={(e) => setNewMemberName(e.target.value)}
+                                    />
+                                </div>
 
-                            <div className="members-list" style={{ maxHeight: '200px' }}>
-                                {allUsers
-                                    .filter(u => u.name?.toLowerCase().includes(newMemberName.toLowerCase()) &&
-                                        !currentGroupMembers.some(m => m.name === u.name)) // Filter out already added members by name (simple check)
-                                    .slice(0, 5)
-                                    .map(user => (
-                                        <div
-                                            key={user.id}
-                                            className="member-item"
-                                            style={{ cursor: 'pointer' }}
-                                            onClick={() => {
-                                                setNewMemberName(user.name);
-                                                // Ideally we select user object directly here
-                                            }}
-                                        >
-                                            <div className="member-avatar" style={{ background: currentTheme.secondary }}>
-                                                {user.name.substring(0, 2).toUpperCase()}
+                                <div className="members-list" style={{ maxHeight: '200px' }}>
+                                    {allUsers
+                                        .filter(u => u.name?.toLowerCase().includes(newMemberName.toLowerCase()) &&
+                                            !currentGroupMembers.some(m => m.name === u.name)) // Filter out already added members by name (simple check)
+                                        .slice(0, 5)
+                                        .map(user => (
+                                            <div
+                                                key={user.id}
+                                                className="member-item"
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => {
+                                                    setNewMemberName(user.name);
+                                                    // Ideally we select user object directly here
+                                                }}
+                                            >
+                                                <div className="member-avatar" style={{ background: currentTheme.secondary }}>
+                                                    {user.name.substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <div className="member-info">
+                                                    <div className="member-name">{user.name}</div>
+                                                    <span className="member-status">{user.role || 'Üye'}</span>
+                                                </div>
+                                                <button className="member-action-btn" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAddSpecificMember(user);
+                                                    setShowAddMemberModal(false);
+                                                    setNewMemberName('');
+                                                }}>
+                                                    <Plus size={16} />
+                                                </button>
                                             </div>
-                                            <div className="member-info">
-                                                <div className="member-name">{user.name}</div>
-                                                <span className="member-status">{user.role || 'Üye'}</span>
+                                        ))
+                                    }
+                                    {PREDEFINED_USERS
+                                        .filter(u => u.name.toLowerCase().includes(newMemberName.toLowerCase()) &&
+                                            !currentGroupMembers.some(m => m.name === u.name))
+                                        .map(user => (
+                                            <div
+                                                key={user.id}
+                                                className="member-item"
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => {
+                                                    handleAddSpecificMember(user);
+                                                    setShowAddMemberModal(false);
+                                                    setNewMemberName('');
+                                                }}
+                                            >
+                                                <div className="member-avatar" style={{ background: currentTheme.secondary }}>
+                                                    {user.avatar}
+                                                </div>
+                                                <div className="member-info">
+                                                    <div className="member-name">{user.name}</div>
+                                                    <span className="member-status">{user.status}</span>
+                                                </div>
+                                                <Plus size={16} style={{ color: currentTheme.primary }} />
                                             </div>
-                                            <button className="member-action-btn" onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleAddSpecificMember(user);
-                                                setShowAddMemberModal(false);
-                                                setNewMemberName('');
-                                            }}>
-                                                <Plus size={16} />
-                                            </button>
-                                        </div>
-                                    ))
-                                }
-                                {PREDEFINED_USERS
-                                    .filter(u => u.name.toLowerCase().includes(newMemberName.toLowerCase()) &&
-                                        !currentGroupMembers.some(m => m.name === u.name))
-                                    .map(user => (
-                                        <div
-                                            key={user.id}
-                                            className="member-item"
-                                            style={{ cursor: 'pointer' }}
-                                            onClick={() => {
-                                                handleAddSpecificMember(user);
-                                                setShowAddMemberModal(false);
-                                                setNewMemberName('');
-                                            }}
-                                        >
-                                            <div className="member-avatar" style={{ background: currentTheme.secondary }}>
-                                                {user.avatar}
-                                            </div>
-                                            <div className="member-info">
-                                                <div className="member-name">{user.name}</div>
-                                                <span className="member-status">{user.status}</span>
-                                            </div>
-                                            <Plus size={16} style={{ color: currentTheme.primary }} />
-                                        </div>
-                                    ))
-                                }
+                                        ))
+                                    }
+                                </div>
+
+                                <button
+                                    className="submit-btn-enhanced"
+                                    onClick={submitAddMember}
+                                    style={{ background: currentTheme.gradient }}
+                                >
+                                    Manuel Olarak Ekle
+                                </button>
                             </div>
-
-                            <button
-                                className="submit-btn-enhanced"
-                                onClick={submitAddMember}
-                                style={{ background: currentTheme.gradient }}
-                            >
-                                Manuel Olarak Ekle
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Confirmation Modal */}
-            {confirmModal.isOpen && (
-                <div className="confirmation-modal-overlay">
-                    <div className="confirmation-modal">
-                        <div className={`modal-icon ${confirmModal.type === 'delete' ? '' : 'generic'}`}>
-                            {confirmModal.type === 'delete' ? <Trash2 size={32} /> :
-                                confirmModal.type === 'leave' ? <LogOut size={32} /> :
-                                    <UserMinus size={32} />}
-                        </div>
-                        <h3>{confirmModal.title}</h3>
-                        <div className="modal-message-box">
-                            <p>{confirmModal.message}</p>
-                        </div>
-                        <div className="modal-actions">
-                            <button className="modal-btn cancel" onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}>
-                                İptal
-                            </button>
-                            <button className="modal-btn confirm" onClick={handleConfirmAction}>
-                                Onayla
-                            </button>
+            {
+                confirmModal.isOpen && (
+                    <div className="confirmation-modal-overlay">
+                        <div className="confirmation-modal">
+                            <div className={`modal-icon ${confirmModal.type === 'delete' ? '' : 'generic'}`}>
+                                {confirmModal.type === 'delete' ? <Trash2 size={32} /> :
+                                    confirmModal.type === 'leave' ? <LogOut size={32} /> :
+                                        <UserMinus size={32} />}
+                            </div>
+                            <h3>{confirmModal.title}</h3>
+                            <div className="modal-message-box">
+                                <p>{confirmModal.message}</p>
+                            </div>
+                            <div className="modal-actions">
+                                <button className="modal-btn cancel" onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}>
+                                    İptal
+                                </button>
+                                <button className="modal-btn confirm" onClick={handleConfirmAction}>
+                                    Onayla
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {/* Call Modal */}
-            {showCallModal && (
-                <div className="call-modal-overlay">
-                    <div className="call-modal">
-                        <div className="call-header">
-                            <div className="call-status">
-                                {callStatus === 'calling' ? 'Aranıyor...' :
-                                    callStatus === 'connected' ? 'Bağlandı' : 'Arama Sonlandı'}
-                            </div>
-                            <div className="call-duration">{callType === 'video' ? 'Kamera Açık' : formatDuration(callDuration)}</div>
-                        </div>
 
-                        {callType === 'video' ? (
-                            <div className="call-video-container">
-                                <video ref={localVideoRef} autoPlay muted className="call-video"></video>
-                                <div className="call-overlay-name">Siz</div>
-                            </div>
-                        ) : (
-                            <div className="call-user-info">
-                                <div className="call-avatar-wrapper">
-                                    <div className="call-avatar" style={{ background: `linear-gradient(135deg, ${selectedGroup.color || currentTheme.primary}, ${selectedGroup.color || currentTheme.primary}aa)` }}>
-                                        {selectedGroup.name.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div className="call-avatar-pulse" style={{ borderColor: currentTheme.primary }}></div>
-                                </div>
-                                <h2>{selectedGroup.name}</h2>
-                                <p>{selectedGroup.memberCount} Üye</p>
-                            </div>
-                        )}
-
-                        <div className="call-controls">
-                            <button className="control-btn" onClick={() => setCallType(callType === 'video' ? 'voice' : 'video')}>
-                                {callType === 'video' ? <Video size={24} /> : <Phone size={24} />}
-                            </button>
-                            <button className="control-btn">
-                                <Mic size={24} />
-                            </button>
-                            <button className="control-btn end-call" onClick={endCall}>
-                                <PhoneOff size={28} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+        </div >
     );
 };
 

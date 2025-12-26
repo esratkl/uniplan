@@ -1246,12 +1246,7 @@ const ChatPage = () => {
                     >
                         <Star size={14} fill={filter === 'favorites' ? 'currentColor' : 'none'} />
                     </button>
-                    <button
-                        className={`filter-tab ${filter === 'calls' ? 'active' : ''}`}
-                        onClick={() => setFilter('calls')}
-                    >
-                        <Phone size={14} />
-                    </button>
+                    {/* Call filter removed */}
                 </div>
 
                 {/* Friends List */}
@@ -1399,34 +1394,7 @@ const ChatPage = () => {
                                 </div>
                             </div>
                             <div className="chat-actions">
-                                <button
-                                    className="action-btn"
-                                    onClick={() => {
-                                        console.log('📞 Voice call button clicked');
-                                        console.log('Socket connected:', isConnected);
-                                        console.log('Selected friend:', selectedFriend?.name);
-                                        startCall('voice');
-                                    }}
-                                    title={isConnected ? "Sesli Arama" : "Sunucuya bağlantı yok"}
-                                    disabled={!isConnected}
-                                    style={!isConnected ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                                >
-                                    <Phone size={20} />
-                                </button>
-                                <button
-                                    className="action-btn"
-                                    onClick={() => {
-                                        console.log('📹 Video call button clicked');
-                                        console.log('Socket connected:', isConnected);
-                                        console.log('Selected friend:', selectedFriend?.name);
-                                        startCall('video');
-                                    }}
-                                    title={isConnected ? "Görüntülü Arama" : "Sunucuya bağlantı yok"}
-                                    disabled={!isConnected}
-                                    style={!isConnected ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                                >
-                                    <Video size={20} />
-                                </button>
+                                {/* Call features removed as per request */}
                                 <button
                                     className="action-btn"
                                     onClick={() => toggleFavorite(selectedFriend.id)}
@@ -1967,152 +1935,7 @@ const ChatPage = () => {
                 )
             }
 
-            {/* Call Modal */}
-            {
-                showCallModal && (
-                    <div className="call-modal-overlay">
-                        <div className="call-modal">
-                            <div className="call-header">
-                                <div className="call-status">
-                                    {callStatus === 'calling' ? 'Aranıyor...' :
-                                        callStatus === 'connecting' ? 'Bağlanıyor...' :
-                                            callStatus === 'ended' ? 'Arama Sonlandı' : 'Bağlandı'}
-                                </div>
-                                {callStatus === 'connected' && (
-                                    <div className="call-duration">{formatDuration(callDuration)}</div>
-                                )}
-                            </div>
 
-                            <div className="call-user-info">
-                                {callType === 'video' ? (
-                                    <div className="call-video-container">
-                                        {/* Remote video (main display) */}
-                                        <video
-                                            ref={remoteVideoRef}
-                                            autoPlay
-                                            playsInline
-                                            className="call-video remote-video"
-                                            style={{
-                                                width: '100%',
-                                                height: '100%',
-                                                objectFit: 'cover',
-                                                background: '#1a1a2e'
-                                            }}
-                                        />
-                                        {/* Local video (small preview) */}
-                                        <video
-                                            ref={localVideoRef}
-                                            autoPlay
-                                            muted
-                                            playsInline
-                                            className="call-video local-video-preview"
-                                            style={{
-                                                position: 'absolute',
-                                                top: '20px',
-                                                right: '20px',
-                                                width: '150px',
-                                                height: '112px',
-                                                borderRadius: '12px',
-                                                border: '2px solid rgba(255,255,255,0.3)',
-                                                objectFit: 'cover',
-                                                zIndex: 10
-                                            }}
-                                        />
-                                        <div className="call-overlay-name">{selectedFriend?.name}</div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <audio ref={remoteVideoRef} autoPlay />
-                                        <div className="call-avatar-wrapper">
-                                            <div className="call-avatar" style={{
-                                                background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`
-                                            }}>
-                                                {selectedFriend?.avatar}
-                                            </div>
-                                            <div className="call-avatar-pulse" style={{ borderColor: currentTheme.primary }}></div>
-                                        </div>
-                                        <h2>{selectedFriend?.name}</h2>
-                                    </>
-                                )}
-                                <p>{callType === 'video' ? 'Görüntülü Arama' : 'Sesli Arama'}</p>
-                            </div>
-
-                            <div className="call-controls">
-                                <button
-                                    className={`control-btn ${isMicMuted ? 'muted' : ''}`}
-                                    onClick={toggleMic}
-                                    title={isMicMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
-                                    style={isMicMuted ? { background: '#ef4444' } : {}}
-                                >
-                                    {isMicMuted ? <MicOff size={24} /> : <Mic size={24} />}
-                                </button>
-                                {callType === 'video' && (
-                                    <button
-                                        className={`control-btn ${isCameraOff ? 'muted' : ''}`}
-                                        onClick={toggleCamera}
-                                        title={isCameraOff ? 'Kamerayı Aç' : 'Kamerayı Kapat'}
-                                        style={isCameraOff ? { background: '#ef4444' } : {}}
-                                    >
-                                        {isCameraOff ? <VideoOff size={24} /> : <Video size={24} />}
-                                    </button>
-                                )}
-                                <button className="control-btn end-call" onClick={() => endCall()} title="Sonlandır">
-                                    <PhoneOff size={28} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Incoming Call Modal */}
-            {
-                incomingCall && (
-                    <div className="call-modal-overlay" style={{ zIndex: 10000 }}>
-                        <div className="call-modal incoming-call-modal">
-                            <div className="call-header">
-                                <div className="call-status">Gelen Arama</div>
-                            </div>
-
-                            <div className="call-user-info">
-                                <div className="call-avatar-wrapper">
-                                    <div className="call-avatar" style={{
-                                        background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`
-                                    }}>
-                                        {incomingCall.callerName?.[0]?.toUpperCase() || 'U'}
-                                    </div>
-                                    <div className="call-avatar-pulse" style={{ borderColor: currentTheme.primary }}></div>
-                                </div>
-                                <h2>{incomingCall.callerName}</h2>
-                                <p>{incomingCall.callType === 'video' ? 'Görüntülü Arama' : 'Sesli Arama'}</p>
-                            </div>
-
-                            <div className="call-controls incoming-call-controls">
-                                <button
-                                    className="control-btn reject-call"
-                                    onClick={rejectCall}
-                                    title="Reddet"
-                                    style={{ background: '#ef4444' }}
-                                >
-                                    <PhoneOff size={28} />
-                                </button>
-                                <button
-                                    className="control-btn accept-call"
-                                    onClick={answerCall}
-                                    title="Cevapla"
-                                    style={{
-                                        background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
-                                        width: '80px',
-                                        height: '80px'
-                                    }}
-                                >
-                                    <Phone size={32} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
 
             {/* Confirmation Modal */}
             {
