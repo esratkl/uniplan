@@ -36,11 +36,10 @@ const SettingsPage = () => {
 
     // Settings States
     const [profileSettings, setProfileSettings] = useState({
-        fullName: 'Ahmet Yılmaz',
-        username: '@ahmetyilmaz',
-        email: 'ahmet@example.com',
-        phone: '+90 555 123 4567',
-        bio: 'Yazılım geliştirici. Teknoloji meraklısı.',
+        fullName: '',
+        username: '',
+        email: '',
+        bio: '',
         avatarUrl: null
     });
 
@@ -78,12 +77,11 @@ const SettingsPage = () => {
         if (user) {
             setProfileSettings(prev => ({
                 ...prev,
-                fullName: user.name || user.full_name || prev.fullName,
-                email: user.email || prev.email,
-                avatarUrl: user.avatar || prev.avatarUrl,
-                username: user.username || prev.username,
-                bio: user.bio || prev.bio,
-                phone: user.phone || prev.phone
+                fullName: user.name || user.full_name || '',
+                email: user.email || '',
+                avatarUrl: user.avatar || null,
+                username: user.username || '',
+                bio: user.bio || ''
             }));
         }
     }, [user]);
@@ -139,8 +137,7 @@ const SettingsPage = () => {
                 email: profileSettings.email,
                 avatar: profileSettings.avatarUrl,
                 username: profileSettings.username,
-                bio: profileSettings.bio,
-                phone: profileSettings.phone
+                bio: profileSettings.bio
             });
 
             setIsLoading(false);
@@ -363,32 +360,7 @@ const SettingsPage = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="settings-form-grid">
-                                                <div className="settings-form-group">
-                                                    <label>
-                                                        <Mail size={16} />
-                                                        Email
-                                                    </label>
-                                                    <input
-                                                        type="email"
-                                                        placeholder="email@ornek.com"
-                                                        value={profileSettings.email}
-                                                        onChange={(e) => setProfileSettings({ ...profileSettings, email: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div className="settings-form-group">
-                                                    <label>
-                                                        <Phone size={16} />
-                                                        Telefon
-                                                    </label>
-                                                    <input
-                                                        type="tel"
-                                                        placeholder="+90 555 123 4567"
-                                                        value={profileSettings.phone}
-                                                        onChange={(e) => setProfileSettings({ ...profileSettings, phone: e.target.value })}
-                                                    />
-                                                </div>
-                                            </div>
+
 
                                             <div className="settings-form-group">
                                                 <label>Biyografi</label>

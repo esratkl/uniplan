@@ -17,11 +17,21 @@
 .groups-container-enhanced.dark {
     background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
     color: #fff;
+    --bg-tertiary: rgba(15, 15, 26, 0.8);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --text-primary: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.5);
+    --bg-hover: rgba(255, 255, 255, 0.05);
 }
 
 .groups-container-enhanced.light {
     background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     color: #1e293b;
+    --bg-tertiary: rgba(255, 255, 255, 0.9);
+    --border-color: rgba(0, 0, 0, 0.08);
+    --text-primary: #1e293b;
+    --text-muted: #64748b;
+    --bg-hover: rgba(0, 0, 0, 0.05);
 }
 
 /* Animated Background Orbs */
@@ -137,14 +147,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--text-primary);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .logo-section h1 {
     font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.7));
+    background: linear-gradient(135deg, var(--text-primary), rgba(255, 255, 255, 0.7));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -167,8 +177,8 @@
     height: 38px;
     border-radius: 10px;
     border: none;
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.7);
+    background: var(--bg-hover);
+    color: var(--text-muted);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -178,7 +188,7 @@
 
 .icon-btn-modern:hover {
     background: rgba(255, 255, 255, 0.12);
-    color: #fff;
+    color: var(--text-primary);
     transform: translateY(-2px);
 }
 
@@ -210,20 +220,20 @@
 }
 
 .search-container svg {
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
 }
 
 .search-container input {
     flex: 1;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 0.9rem;
     outline: none;
 }
 
 .search-container input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
 }
 
 .groups-container-enhanced.light .search-container {
@@ -272,14 +282,14 @@
 }
 
 .action-btn-secondary {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
 }
 
 .action-btn-secondary:hover {
     background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    color: var(--text-primary);
 }
 
 /* Filter Tabs */
@@ -300,7 +310,7 @@
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-muted);
     font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
@@ -308,7 +318,7 @@
 }
 
 .filter-tab-enhanced:hover {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-primary);
 }
 
 .filter-tab-enhanced.active {
@@ -362,12 +372,12 @@
 .empty-state p {
     font-size: 1rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-primary);
 }
 
 .empty-state span {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-muted);
 }
 
 /* Group Item */
@@ -453,12 +463,12 @@
 
 .group-time {
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
 }
 
 .group-preview {
     font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -488,7 +498,7 @@
     align-items: center;
     gap: 0.5rem;
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
     margin-top: 0.125rem;
 }
 
@@ -518,9 +528,9 @@
 }
 
 .welcome-card {
-    background: rgba(15, 15, 26, 0.6);
+    background: var(--bg-tertiary);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
     border-radius: 24px;
     padding: 3rem;
     text-align: center;
@@ -534,7 +544,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--text-primary);
     margin: 0 auto 1.5rem;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
@@ -546,7 +556,7 @@
 }
 
 .welcome-card p {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-muted);
     margin-bottom: 2rem;
 }
 
@@ -562,7 +572,7 @@
     align-items: center;
     gap: 0.5rem;
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--text-muted);
 }
 
 /* Chat Header */
@@ -571,9 +581,9 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem 1.5rem;
-    background: rgba(15, 15, 26, 0.8);
+    background: var(--bg-tertiary);
     backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .back-btn-mobile {
@@ -582,8 +592,8 @@
     height: 40px;
     border-radius: 10px;
     border: none;
-    background: rgba(255, 255, 255, 0.06);
-    color: #fff;
+    background: var(--bg-hover);
+    color: var(--text-primary);
     cursor: pointer;
 }
 
@@ -601,6 +611,7 @@
     border-radius: 14px;
     display: flex;
     align-items: center;
+    justify-content: center;
     justify-content: center;
     color: #fff;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -632,7 +643,7 @@
 
 .chat-status {
     font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-muted);
 }
 
 .chat-header-actions {
@@ -656,7 +667,7 @@
 
 .header-action-btn:hover {
     background: rgba(255, 255, 255, 0.12);
-    color: #fff;
+    color: var(--text-primary);
     transform: translateY(-2px);
 }
 
@@ -734,9 +745,11 @@
 }
 
 .message-bubble-enhanced.received {
+    align-self: flex-start;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border-bottom-left-radius: 4px;
+    color: var(--text-primary);
 }
 
 .message-bubble-enhanced.sent {

@@ -405,6 +405,13 @@ const GroupsPage = () => {
 
     // Wallpaper style
     const getWallpaperStyle = () => {
+        // In Light Mode, force a light background to ensure the dark text is visible
+        if (!isDarkMode) {
+            return {
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
+            };
+        }
+
         if (currentWallpaper.type === 'image') {
             return {
                 backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${currentWallpaper.value})`,
