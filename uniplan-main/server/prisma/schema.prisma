@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(auto()) @map("_id") @db.ObjectId
+  email               String               @unique
+  password            String
+  name                String?
+  avatar              String?
+  bio                 String?
+  phone               String?
+  status              String               @default("offline") // online, offline, away
+  lastSeen            DateTime?            @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  messages            Message[]
+  directMessages      DirectMessage[]
+  groupMessages       GroupMessage[]
+  ownedGroups         Group[]              @relation("GroupOwner")
+  groupMembers        GroupMember[]
+  directChats1        DirectChat[]         @relation("User1")
+  directChats2        DirectChat[]         @relation("User2")
+  todos               Todo[]
+  calendarEvents      CalendarEvent[]
+  pomodoroSessions    PomodoroSession[]
+  weeklyPerformances  WeeklyPerformance[]
+}
+
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  text      String
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?  @db.ObjectId
+}
+
+model DirectChat {
+  id           String          @id @default(auto()) @map("_id") @db.ObjectId
+  user1        User            @relation("User1", fields: [user1Id], references: [id])
+  user1Id      String          @db.ObjectId
+  user2        User            @relation("User2", fields: [user2Id], references: [id])
+  user2Id      String          @db.ObjectId
+  messages     DirectMessage[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  
+  @@unique([user1Id, user2Id])
+}
+
+model DirectMessage {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  chat         DirectChat  @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId       String      @db.ObjectId
+  sender       User        @relation(fields: [senderId], references: [id])
+  senderId     String      @db.ObjectId
+  text         String
+  read         Boolean     @default(false)
+  fileUrl      String?
+  fileName     String?
+  fileType     String?
+  attachments  String[]    @default([])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Group {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  avatar      String?
+  color       String         @default("#3b82f6")
+  owner       User           @relation("GroupOwner", fields: [ownerId], references: [id])
+  ownerId     String         @db.ObjectId
+  members     GroupMember[]
+  messages    GroupMessage[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model GroupMember {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId   String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.ObjectId
+  role      String   @default("member") // admin, member
+  joinedAt  DateTime @default(now())
+  
+  @@unique([groupId, userId])
+}
+
+model GroupMessage {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId     String   @db.ObjectId
+  sender      User     @relation(fields: [senderId], references: [id])
+  senderId    String   @db.ObjectId
+  text        String
+  fileUrl     String?
+  fileName    String?
+  fileType    String?
+  attachments String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Todo model - Görevler için
+model Todo {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  priority    String    @default("medium") // low, medium, high
+  dueDate     DateTime?
+  category    String?
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String    @db.ObjectId
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// CalendarEvent model - Takvim etkinlikleri için
+model CalendarEvent {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  allDay      Boolean  @default(false)
+  color       String   @default("#3b82f6")
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String   @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// PomodoroSession model - Pomodoro oturumları için
+model PomodoroSession {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  duration      Int      // dakika cinsinden
+  type          String   @default("focus") // focus, shortBreak, longBreak
+  completedAt   DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String   @db.ObjectId
+  createdAt     DateTime @default(now())
+}
+
+// WeeklyPerformance model - Haftalık performans takibi için
+model WeeklyPerformance {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  weekStart DateTime // Haftanın başlangıç tarihi (Pazartesi)
+  scores    Float[]  // 7 günlük skor dizisi [Pzt, Sal, Car, Per, Cum, Cmt, Paz]
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, weekStart])
+}

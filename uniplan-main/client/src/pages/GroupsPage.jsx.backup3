@@ -1,0 +1,877 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Search, Plus, Users, Settings, X, ArrowLeft, Smile, Paperclip, LogOut, Trash2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import io from 'socket.io-client';
+import { useAuth } from '../context/AuthContext';
+import { groupAPI, userAPI } from '../services/api';
+import '../styles/Groups.css';
+
+const API_URL = process.env.REACT_APP_API_URL || '';
+
+const GroupsPage = () => {
+    const { user } = useAuth();
+    const [socket, setSocket] = useState(null);
+    const [isConnected, setIsConnected] = useState(false);
+
+    // Groups and state
+    const [groups, setGroups] = useState([]);
+    const [selectedGroup, setSelectedGroup] = useState(null);
+    const [messages, setMessages] = useState([]);
+
+    // UI state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [inputMessage, setInputMessage] = useState('');
+    const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+    const [showMembersModal, setShowMembersModal] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    // Create group form
+    const [newGroupName, setNewGroupName] = useState('');
+    const [newGroupDescription, setNewGroupDescription] = useState('');
+    const [newGroupColor, setNewGroupColor] = useState('#3b82f6');
+
+    // Add member
+    const [allUsers, setAllUsers] = useState([]);
+    const [userSearchQuery, setUserSearchQuery] = useState('');
+
+    const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
+
+    // State for interactive features
+    const [showSettings, setShowSettings] = useState(false);
+    const [settingsPosition, setSettingsPosition] = useState({ top: 0, right: 0 });
+    const settingsButtonRef = useRef(null);
+
+    // Emoji & File Upload
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [emojiTab, setEmojiTab] = useState('emoji');
+    const [emojiCategory, setEmojiCategory] = useState('smileys');
+    const [favoriteEmojis, setFavoriteEmojis] = useState(['😀', '❤️', '👍', '🎉', '🔥', '😂', '✅', '💯', '😍', '🙏']);
+    const fileInputRef = useRef(null);
+
+    // Emoji categories (Simplified for brevity, can expand later)
+    const emojiCategories = {
+        smileys: { icon: '😀', name: 'Yüzler', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '🥰', '😍', '🤩', '😘', '😜', '😎'] },
+        emotions: { icon: '❤️', name: 'Duygular', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❤️‍🔥', '💕', '💞', '💓', '💗', '💖'] },
+        gestures: { icon: '👋', name: 'El', emojis: ['👋', '🤚', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '👍', '👎', '✊', '👊', '👏', '🙌', '🙏'] }
+    };
+
+    const groupColors = [
+        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+        '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+    ];
+
+    // Initialize Socket.IO
+    useEffect(() => {
+        if (!user) return;
+
+        const socketUrl = API_URL || window.location.origin;
+        const newSocket = io(socketUrl, {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 5
+        });
+
+        newSocket.on('connect', () => {
+            console.log('✅ Socket connected:', newSocket.id);
+            setIsConnected(true);
+            newSocket.emit('user_connected', { userId: user.id });
+        });
+
+        newSocket.on('disconnect', () => {
+            console.log('❌ Socket disconnected');
+            setIsConnected(false);
+        });
+
+        // Listen for group messages
+        newSocket.on('receive_group_message', (message) => {
+            console.log('📨 Received group message:', message);
+
+            // If message is for the currently selected group, add it to messages
+            if (selectedGroup && message.groupId === selectedGroup.id) {
+                setMessages(prev => [...prev, message]);
+            }
+
+            // Update group list
+            loadGroups();
+        });
+
+        // Listen for group message deletion
+        newSocket.on('group_message_deleted', ({ messageId, groupId }) => {
+            if (selectedGroup && selectedGroup.id === groupId) {
+                setMessages(prev => prev.filter(msg => msg.id !== messageId));
+            }
+        });
+
+        setSocket(newSocket);
+
+        return () => {
+            newSocket.close();
+        };
+    }, [user]);
+
+    // Load groups on mount
+    useEffect(() => {
+        if (user) {
+            loadGroups();
+            loadAllUsers();
+        }
+    }, [user]);
+
+    // Join group room when selected group changes
+    useEffect(() => {
+        if (socket && selectedGroup) {
+            socket.emit('join_group', { groupId: selectedGroup.id });
+            loadMessages(selectedGroup.id);
+
+            return () => {
+                socket.emit('leave_group', { groupId: selectedGroup.id });
+            };
+        }
+    }, [socket, selectedGroup]);
+
+    // Auto-scroll to bottom when new messages arrive
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const loadGroups = async () => {
+        try {
+            const data = await groupAPI.getAll();
+            setGroups(data);
+        } catch (error) {
+            console.error('Failed to load groups:', error);
+        }
+    };
+
+    const loadAllUsers = async () => {
+        try {
+            const data = await userAPI.getAll();
+            setAllUsers(data);
+        } catch (error) {
+            console.error('Failed to load users:', error);
+        }
+    };
+
+    const loadMessages = async (groupId) => {
+        try {
+            setLoading(true);
+            const data = await groupAPI.getMessages(groupId);
+            setMessages(data);
+        } catch (error) {
+            console.error('Failed to load messages:', error);
+            setMessages([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const createGroup = async () => {
+        if (!newGroupName.trim()) return;
+
+        try {
+            const group = await groupAPI.create(
+                newGroupName.trim(),
+                newGroupDescription.trim(),
+                newGroupColor
+            );
+            await loadGroups();
+            setSelectedGroup(group);
+            setShowCreateGroupModal(false);
+            setNewGroupName('');
+            setNewGroupDescription('');
+            setNewGroupColor('#3b82f6');
+        } catch (error) {
+            console.error('Failed to create group:', error);
+        }
+    };
+
+    const addMember = async (userId) => {
+        if (!selectedGroup) return;
+
+        try {
+            await groupAPI.addMember(selectedGroup.id, userId);
+            // Reload group details
+            const updatedGroup = await groupAPI.get(selectedGroup.id);
+            setSelectedGroup(updatedGroup);
+            loadGroups();
+        } catch (error) {
+            console.error('Failed to add member:', error);
+        }
+    };
+
+    const sendMessage = () => {
+        if (!inputMessage.trim() || !selectedGroup || !socket) return;
+
+        const messageData = {
+            groupId: selectedGroup.id,
+            text: inputMessage.trim(),
+            senderId: user.id
+        };
+
+        // Emit via socket
+        socket.emit('send_group_message', messageData);
+
+        // Clear input
+        setInputMessage('');
+        inputRef.current?.focus();
+    };
+
+    const addEmoji = (emoji) => {
+        setInputMessage(prev => prev + emoji);
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file || !selectedGroup) return;
+
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const fileUrl = event.target.result;
+            const isImage = file.type.startsWith('image/');
+
+            const newMessage = {
+                id: Date.now(),
+                text: isImage ? '' : `📎 ${file.name}`,
+                fileUrl: fileUrl,
+                fileName: file.name,
+                fileType: file.type,
+                senderId: user.id,
+                createdAt: new Date().toISOString(),
+                sender: { name: user.name, avatar: user.avatar }
+            };
+
+            setMessages(prev => [...prev, newMessage]);
+
+            if (socket) {
+                socket.emit('send_group_message', {
+                    groupId: selectedGroup.id,
+                    text: isImage ? '[Resim]' : `📎 ${file.name}`,
+                    senderId: user.id,
+                    fileUrl: fileUrl,
+                    fileName: file.name,
+                    fileType: file.type
+                });
+            }
+        };
+
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
+
+    const handleDeleteMessage = async (messageId) => {
+        if (!confirm('Bu mesajı silmek istediğinize emin misiniz?')) return;
+
+        try {
+            // Optimistic update
+            setMessages(prev => prev.filter(msg => msg.id !== messageId));
+
+            // Send socket event for real-time update
+            if (socket && selectedGroup) {
+                socket.emit('delete_group_message', {
+                    messageId,
+                    groupId: selectedGroup.id,
+                    senderId: user.id
+                });
+            } else {
+                await groupAPI.deleteMessage(messageId);
+            }
+        } catch (error) {
+            console.error('Failed to delete message:', error);
+            // Reload to restore state if failed
+            if (selectedGroup) loadMessages(selectedGroup.id);
+        }
+    };
+
+    const handleLeaveGroup = async () => {
+        if (!selectedGroup) return;
+        if (window.confirm('Bu gruptan ayrılmak istediğinize emin misiniz?')) {
+            try {
+                // await groupAPI.leave(selectedGroup.id); // Assuming this endpoint exists
+                alert('Gruptan ayrıldınız (Simülasyon)');
+                setSelectedGroup(null);
+                loadGroups();
+            } catch (error) {
+                console.error('Failed to leave group:', error);
+            }
+        }
+        setShowSettings(false);
+    };
+
+    // Click outside to close settings
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showSettings &&
+                settingsButtonRef.current &&
+                !settingsButtonRef.current.contains(event.target) &&
+                !event.target.closest('.group-settings-menu')) {
+                setShowSettings(false);
+            }
+        };
+
+        if (showSettings) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showSettings]);
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    };
+
+    // Filter groups based on search
+    const filteredGroups = groups.filter(group =>
+        group.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        group.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Filter users for adding members
+    const availableUsers = allUsers.filter(u =>
+        (u.name?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+            u.email?.toLowerCase().includes(userSearchQuery.toLowerCase())) &&
+        !selectedGroup?.members?.some(m => m.user?.id === u.id)
+    );
+
+    const formatTime = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    return (
+        <div className="groups-page">
+            {/* Sidebar - Groups List */}
+            <div className="groups-sidebar">
+                <div className="groups-sidebar-header">
+                    <h2>Gruplar</h2>
+                    <button
+                        className="icon-button"
+                        onClick={() => setShowCreateGroupModal(true)}
+                        title="Yeni grup"
+                    >
+                        <Plus size={20} />
+                    </button>
+                </div>
+
+                <div className="groups-search">
+                    <Search size={18} />
+                    <input
+                        type="text"
+                        placeholder="Grup ara..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+
+                <div className="groups-list">
+                    {filteredGroups.length === 0 ? (
+                        <div className="empty-state">
+                            <p>Henüz grubunuz yok</p>
+                            <button
+                                className="btn-primary"
+                                onClick={() => setShowCreateGroupModal(true)}
+                            >
+                                Yeni Grup Oluştur
+                            </button>
+                        </div>
+                    ) : (
+                        filteredGroups.map(group => (
+                            <div
+                                key={group.id}
+                                className={`group-item ${selectedGroup?.id === group.id ? 'active' : ''}`}
+                                onClick={() => setSelectedGroup(group)}
+                            >
+                                <div
+                                    className="group-avatar"
+                                    style={{ background: group.color || '#3b82f6' }}
+                                >
+                                    {group.avatar ? (
+                                        <img src={group.avatar} alt={group.name} />
+                                    ) : (
+                                        <span>{group.name?.[0]?.toUpperCase() || 'G'}</span>
+                                    )}
+                                </div>
+                                <div className="group-info">
+                                    <div className="group-name-row">
+                                        <span className="group-name">{group.name}</span>
+                                        {group.lastMessage && (
+                                            <span className="group-time">
+                                                {formatTime(group.lastMessage.createdAt)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="group-meta">
+                                        <Users size={14} />
+                                        <span>{group.memberCount || group.members?.length || 0} üye</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+                    <span className="status-dot"></span>
+                    {isConnected ? 'Bağlı' : 'Bağlantı kesildi'}
+                </div>
+            </div>
+
+            {/* Main Group Area */}
+            <div className="groups-main">
+                {selectedGroup ? (
+                    <>
+                        {/* Group Header */}
+                        <div className="group-header">
+                            <div className="group-header-info">
+                                <div
+                                    className="group-avatar"
+                                    style={{ background: selectedGroup.color || '#3b82f6' }}
+                                >
+                                    {selectedGroup.avatar ? (
+                                        <img src={selectedGroup.avatar} alt={selectedGroup.name} />
+                                    ) : (
+                                        <span>{selectedGroup.name?.[0]?.toUpperCase() || 'G'}</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <h3>{selectedGroup.name}</h3>
+                                    <p className="group-description">
+                                        <Users size={14} />
+                                        {selectedGroup.members?.length || 0} üye
+                                        {selectedGroup.description && ` • ${selectedGroup.description}`}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="group-header-actions">
+                                <button
+                                    className="icon-button"
+                                    onClick={() => setShowMembersModal(true)}
+                                    title="Üyeler"
+                                >
+                                    <Users size={20} />
+                                </button>
+                                <button
+                                    className="icon-button"
+                                    title="Ayarlar"
+                                    ref={settingsButtonRef}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setSettingsPosition({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+                                        setShowSettings(!showSettings);
+                                    }}
+                                >
+                                    <Settings size={20} />
+                                </button>
+                                {showSettings && createPortal(
+                                    <div
+                                        className="group-settings-menu"
+                                        style={{
+                                            position: 'fixed',
+                                            top: settingsPosition.top,
+                                            right: settingsPosition.right,
+                                            background: '#1e1e2e',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '12px',
+                                            padding: '8px',
+                                            zIndex: 9999,
+                                            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                                            minWidth: '200px'
+                                        }}
+                                    >
+                                        <button
+                                            className="settings-item"
+                                            onClick={handleLeaveGroup}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                padding: '10px 12px', width: '100%', border: 'none',
+                                                background: 'transparent', color: '#ef4444',
+                                                cursor: 'pointer', borderRadius: '8px', textAlign: 'left'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <LogOut size={16} />
+                                            Gruptan Ayrıl
+                                        </button>
+                                        {selectedGroup.userRole === 'admin' && (
+                                            <button
+                                                className="settings-item"
+                                                onClick={() => { alert('Grup silme (Simülasyon)'); setShowSettings(false); }}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                                    padding: '10px 12px', width: '100%', border: 'none',
+                                                    background: 'transparent', color: '#ef4444',
+                                                    cursor: 'pointer', borderRadius: '8px', textAlign: 'left'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <Trash2 size={16} />
+                                                Grubu Sil
+                                            </button>
+                                        )}
+                                    </div>,
+                                    document.body
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Messages Area */}
+                        <div className="group-messages">
+                            {loading ? (
+                                <div className="loading-state">Mesajlar yükleniyor...</div>
+                            ) : messages.length === 0 ? (
+                                <div className="empty-messages">
+                                    <p>Henüz mesaj yok. Konuşmaya başlayın!</p>
+                                </div>
+                            ) : (
+                                messages.map((message, index) => {
+                                    const isOwn = message.senderId === user.id;
+                                    const showAvatar = index === 0 || messages[index - 1].senderId !== message.senderId;
+
+                                    return (
+                                        <div
+                                            key={message.id}
+                                            className={`message ${isOwn ? 'message-own' : 'message-other'}`}
+                                        >
+                                            {!isOwn && showAvatar && (
+                                                <div className="message-avatar">
+                                                    {message.sender?.avatar ? (
+                                                        <img src={message.sender.avatar} alt={message.sender.name} />
+                                                    ) : (
+                                                        <div className="avatar-placeholder-small">
+                                                            {message.sender?.name?.[0]?.toUpperCase() || '?'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div className="message-content">
+                                                {!isOwn && showAvatar && (
+                                                    <span className="sender-name">
+                                                        {message.sender?.name || message.sender?.email}
+                                                    </span>
+                                                )}
+                                                <div className={`message-bubble ${message.fileUrl ? 'has-media' : ''}`}>
+                                                    {isOwn && (
+                                                        <button
+                                                            className="delete-message-btn"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteMessage(message.id);
+                                                            }}
+                                                            title="Mesajı sil"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                    {message.fileUrl && message.fileType?.startsWith('image/') ? (
+                                                        <img src={message.fileUrl} alt="Görsel" className="message-media" />
+                                                    ) : message.fileUrl ? (
+                                                        <div className="file-attachment">
+                                                            <span>📎 {message.fileName}</span>
+                                                            <a
+                                                                href={message.fileUrl}
+                                                                download={message.fileName}
+                                                                className="download-link"
+                                                                style={{
+                                                                    display: 'block', marginTop: '5px',
+                                                                    color: 'inherit', textDecoration: 'underline', fontWeight: 'bold'
+                                                                }}
+                                                            >
+                                                                İndir
+                                                            </a>
+                                                        </div>
+                                                    ) : (
+                                                        message.text
+                                                    )}
+                                                </div>
+                                                <span className="message-time">
+                                                    {formatTime(message.createdAt)}
+                                                </span>
+                                                <style>{`
+                                                    .message-bubble { position: relative; }
+                                                    .message-bubble:hover .delete-message-btn {
+                                                        opacity: 1 !important;
+                                                        transform: scale(1) !important;
+                                                        top: -8px !important;
+                                                        right: -8px !important;
+                                                    }
+                                                `}</style>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Message Input */}
+                        <div className="group-input-container">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                style={{ display: 'none' }}
+                                onChange={handleFileUpload}
+                            />
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    className="icon-button"
+                                    title="Emoji"
+                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                >
+                                    <Smile size={22} />
+                                </button>
+                                {showEmojiPicker && (
+                                    <div className="emoji-picker-popup" style={{
+                                        position: 'absolute', bottom: '50px', left: '0',
+                                        background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '16px', width: '300px', height: '350px',
+                                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)', zIndex: 100,
+                                        display: 'flex', flexDirection: 'column', overflow: 'hidden'
+                                    }}>
+                                        <div className="emoji-categories-header" style={{
+                                            display: 'flex', padding: '10px', background: 'rgba(0,0,0,0.2)',
+                                            gap: '8px', overflowX: 'auto'
+                                        }}>
+                                            {Object.entries(emojiCategories).map(([key, cat]) => (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => setEmojiCategory(key)}
+                                                    style={{
+                                                        background: 'none', border: 'none', fontSize: '18px',
+                                                        cursor: 'pointer', opacity: emojiCategory === key ? 1 : 0.5
+                                                    }}
+                                                >
+                                                    {cat.icon}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="emoji-grid" style={{
+                                            flex: 1, overflowY: 'auto', padding: '10px',
+                                            display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px'
+                                        }}>
+                                            {emojiCategories[emojiCategory].emojis.map((emoji, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => addEmoji(emoji)}
+                                                    style={{
+                                                        background: 'none', border: 'none', fontSize: '20px',
+                                                        cursor: 'pointer', padding: '4px', borderRadius: '4px'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                >
+                                                    {emoji}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                className="icon-button"
+                                title="Dosya ekle"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <Paperclip size={22} />
+                            </button>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                className="group-input"
+                                placeholder="Mesajınızı yazın..."
+                                value={inputMessage}
+                                onChange={(e) => setInputMessage(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                            />
+                            <button
+                                className="send-button"
+                                onClick={sendMessage}
+                                disabled={!inputMessage.trim()}
+                            >
+                                <Send size={20} />
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <div className="group-empty-state">
+                        <h2>Bir grup seçin</h2>
+                        <p>Mesajlaşmaya başlamak için soldaki listeden bir grup seçin veya yeni grup oluşturun.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Create Group Modal */}
+            {showCreateGroupModal && (
+                <div className="modal-overlay" onClick={() => setShowCreateGroupModal(false)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Yeni Grup Oluştur</h3>
+                            <button
+                                className="icon-button"
+                                onClick={() => setShowCreateGroupModal(false)}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label>Grup Adı *</label>
+                                <input
+                                    type="text"
+                                    placeholder="Örn: Proje Ekibi"
+                                    value={newGroupName}
+                                    onChange={(e) => setNewGroupName(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Açıklama</label>
+                                <textarea
+                                    placeholder="Grup hakkında kısa bilgi"
+                                    value={newGroupDescription}
+                                    onChange={(e) => setNewGroupDescription(e.target.value)}
+                                    rows={3}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Renk</label>
+                                <div className="color-picker">
+                                    {groupColors.map(color => (
+                                        <div
+                                            key={color}
+                                            className={`color-option ${newGroupColor === color ? 'selected' : ''}`}
+                                            style={{ background: color }}
+                                            onClick={() => setNewGroupColor(color)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="modal-actions">
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => setShowCreateGroupModal(false)}
+                                >
+                                    İptal
+                                </button>
+                                <button
+                                    className="btn-primary"
+                                    onClick={createGroup}
+                                    disabled={!newGroupName.trim()}
+                                >
+                                    Oluştur
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Members Modal */}
+            {showMembersModal && selectedGroup && (
+                <div className="modal-overlay" onClick={() => setShowMembersModal(false)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Grup Üyeleri</h3>
+                            <button
+                                className="icon-button"
+                                onClick={() => setShowMembersModal(false)}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            {/* Search to add members */}
+                            {selectedGroup.userRole === 'admin' && (
+                                <>
+                                    <div className="groups-search">
+                                        <Search size={18} />
+                                        <input
+                                            type="text"
+                                            placeholder="Üye ekle..."
+                                            value={userSearchQuery}
+                                            onChange={(e) => setUserSearchQuery(e.target.value)}
+                                        />
+                                    </div>
+
+                                    {userSearchQuery && (
+                                        <div className="add-members-list">
+                                            {availableUsers.length === 0 ? (
+                                                <div className="empty-state">
+                                                    <p>Kullanıcı bulunamadı</p>
+                                                </div>
+                                            ) : (
+                                                availableUsers.slice(0, 5).map(u => (
+                                                    <div
+                                                        key={u.id}
+                                                        className="user-item"
+                                                        onClick={() => {
+                                                            addMember(u.id);
+                                                            setUserSearchQuery('');
+                                                        }}
+                                                    >
+                                                        <div className="chat-avatar">
+                                                            {u.avatar ? (
+                                                                <img src={u.avatar} alt={u.name} />
+                                                            ) : (
+                                                                <div className="avatar-placeholder">
+                                                                    {u.name?.[0]?.toUpperCase() || '?'}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="user-info">
+                                                            <div className="user-name">{u.name || u.email}</div>
+                                                            <div className="user-email">{u.email}</div>
+                                                        </div>
+                                                        <Plus size={20} className="add-icon" />
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {/* Current members */}
+                            <div className="members-list">
+                                <h4>Üyeler ({selectedGroup.members?.length || 0})</h4>
+                                {selectedGroup.members?.map(member => (
+                                    <div key={member.id} className="member-item">
+                                        <div className="chat-avatar">
+                                            {member.user?.avatar ? (
+                                                <img src={member.user.avatar} alt={member.user.name} />
+                                            ) : (
+                                                <div className="avatar-placeholder">
+                                                    {member.user?.name?.[0]?.toUpperCase() || '?'}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="user-info">
+                                            <div className="user-name">
+                                                {member.user?.name || member.user?.email}
+                                            </div>
+                                            <div className="user-role">{member.role === 'admin' ? 'Yönetici' : 'Üye'}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default GroupsPage;
