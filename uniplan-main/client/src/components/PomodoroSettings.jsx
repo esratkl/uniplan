@@ -56,13 +56,13 @@ const PomodoroSettings = ({
     const sounds = [
         { id: 'none', icon: '🔇', label: 'Sessiz' },
         { id: 'rain', icon: '🌧️', label: 'Yağmur' },
-        { id: 'waves', icon: '🌊', label: 'Dalga' },
-        { id: 'forest', icon: '🌲', label: 'Orman' },
-        { id: 'library', icon: '📚', label: 'Kütüphane' },
+        { id: 'jazz', icon: '🎷', label: 'Jazz' },
+        { id: 'classical', icon: '🎻', label: 'Klasik' },
+        { id: 'piano', icon: '🎹', label: 'Piyano' },
         { id: 'fireplace', icon: '🔥', label: 'Şömine' },
         { id: 'cafe', icon: '☕', label: 'Kafe' },
-        { id: 'thunder', icon: '⛈️', label: 'Gök Gürültüsü' },
-        { id: 'wind', icon: '💨', label: 'Rüzgar' }
+        { id: 'lofi', icon: '🎧', label: 'Lo-fi' },
+        { id: 'guitar', icon: '🎸', label: 'Gitar' }
     ];
 
     if (!isOpen) return null;

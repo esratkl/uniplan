@@ -17,7 +17,7 @@ const PomodoroPage = () => {
     const [breakDuration, setBreakDuration] = useState(5);
     const [longBreakDuration, setLongBreakDuration] = useState(15);
     const [sessionsBeforeLongBreak, setSessionsBeforeLongBreak] = useState(4);
-    
+
     // Background & Theme
     const [bgColor, setBgColor] = useState('#1e40af');
     const [pattern, setPattern] = useState('none');
@@ -35,33 +35,27 @@ const PomodoroPage = () => {
     const gainNodeRef = useRef(null);
     const currentSoundRef = useRef(null);
 
-    const initAudio = () => {
-        if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            gainNodeRef.current = audioContextRef.current.createGain();
-            gainNodeRef.current.connect(audioContextRef.current.destination);
-            gainNodeRef.current.gain.value = volume / 100;
-        }
-    };
+    // Sound URLs map
+    const soundUrls = useRef({
+        rain: 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg',
+        jazz: '/sounds/jazz.mp3',
+        classical: '/sounds/classical.mp3',
+        piano: '/sounds/piano.mp3',
+        fireplace: 'https://actions.google.com/sounds/v1/ambiences/fire.ogg',
+        cafe: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+        lofi: '/sounds/lofi.mp3',
+        guitar: '/sounds/guitar.mp3'
+    });
 
-    const playSound = (soundType) => {
-        if (!audioContextRef.current) initAudio();
-        stopSound();
-
-        // Basit ses simülasyonu (gerçek uygulamada daha gelişmiş olabilir)
-        if (soundType !== 'none' && gainNodeRef.current) {
-            gainNodeRef.current.gain.value = volume / 100;
+    const stopSound = useCallback(() => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current = null;
         }
-    };
+    }, []);
 
-    const stopSound = () => {
-        if (currentSoundRef.current) {
-            if (currentSoundRef.current.stop) {
-                currentSoundRef.current.stop();
-            }
-            currentSoundRef.current = null;
-        }
-    };
+
 
     const handleTimerComplete = useCallback(() => {
         setIsActive(false);
@@ -69,13 +63,13 @@ const PomodoroPage = () => {
             clearInterval(timerRef.current);
             timerRef.current = null;
         }
-        
+
         setCompletedSessions((prev) => {
             const newCompletedSessions = prev + 1;
-            
+
             if (mode === 'work') {
                 setTotalFocusSeconds((current) => current + duration);
-                
+
                 // Uzun mola kontrolü
                 if (newCompletedSessions % sessionsBeforeLongBreak === 0) {
                     setMode('longBreak');
@@ -91,14 +85,14 @@ const PomodoroPage = () => {
                 setTimeLeft(workDuration * 60);
                 setDuration(workDuration * 60);
             }
-            
+
             return newCompletedSessions;
         });
 
         // Bildirim göster
         const currentMode = mode;
-        const message = currentMode === 'work' 
-            ? 'Harika İş! Mola Zamanı 🎉' 
+        const message = currentMode === 'work'
+            ? 'Harika İş! Mola Zamanı 🎉'
             : 'Mola Bitti! Çalışmaya Başla 💪';
         console.log(message);
         if (window.Notification && Notification.permission === 'granted') {
@@ -137,19 +131,64 @@ const PomodoroPage = () => {
         }
     }, [timeLeft, isActive, handleTimerComplete]);
 
+    const volumeRef = useRef(volume);
+
     useEffect(() => {
-        // Ses çalma
+        volumeRef.current = volume;
+        if (audioRef.current) {
+            audioRef.current.volume = volume / 100;
+        }
+    }, [volume]);
+
+    // Cleanup gainNodeRef if present (not used anymore but for cleanliness)
+
+    const playSound = useCallback((type) => {
+
+        stopSound();
+        if (type === 'none') return;
+
+        const url = soundUrls.current[type];
+
+
+        if (url) {
+            try {
+                const audio = new Audio(url);
+                audio.loop = true;
+                audio.volume = volumeRef.current / 100;
+
+
+
+                const playPromise = audio.play();
+
+                if (playPromise !== undefined) {
+                    playPromise
+                        .catch(error => {
+                            console.error("Audio play failed:", error);
+                        });
+                }
+
+                audioRef.current = audio;
+            } catch (err) {
+                console.error("Error creating Audio object:", err);
+            }
+        } else {
+
+        }
+    }, [stopSound]);
+
+    useEffect(() => {
+
         if (soundType !== 'none') {
-            initAudio();
             playSound(soundType);
         } else {
+
             stopSound();
         }
 
         return () => {
             stopSound();
         };
-    }, [soundType, volume]);
+    }, [soundType, playSound, stopSound]);
 
     const resetTimer = () => {
         setIsActive(false);
@@ -175,7 +214,7 @@ const PomodoroPage = () => {
             clearInterval(timerRef.current);
             timerRef.current = null;
         }
-        
+
         if (mode === 'work') {
             setCompletedSessions((prev) => {
                 const newCompletedSessions = prev + 1;
@@ -267,7 +306,7 @@ const PomodoroPage = () => {
     };
 
     return (
-        <div 
+        <div
             className={`pomodoro-container ${isFullscreen ? 'fullscreen' : ''}`}
             style={containerStyle}
             data-pattern={pattern}
