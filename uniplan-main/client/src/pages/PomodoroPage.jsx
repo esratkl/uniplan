@@ -41,7 +41,7 @@ const PomodoroPage = () => {
         jazz: '/sounds/jazz.mp3',
         classical: '/sounds/classical.mp3',
         piano: '/sounds/piano.mp3',
-        fireplace: 'https://actions.google.com/sounds/v1/ambiences/fire.ogg',
+        instrumental: '/sounds/instrumental.mp3',
         cafe: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
         lofi: '/sounds/lofi.mp3',
         guitar: '/sounds/guitar.mp3'

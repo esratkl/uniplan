@@ -59,7 +59,7 @@ const PomodoroSettings = ({
         { id: 'jazz', icon: '🎷', label: 'Jazz' },
         { id: 'classical', icon: '🎻', label: 'Klasik' },
         { id: 'piano', icon: '🎹', label: 'Piyano' },
-        { id: 'fireplace', icon: '🔥', label: 'Şömine' },
+        { id: 'instrumental', icon: '🎻', label: 'Enstrümantal' },
         { id: 'cafe', icon: '☕', label: 'Kafe' },
         { id: 'lofi', icon: '🎧', label: 'Lo-fi' },
         { id: 'guitar', icon: '🎸', label: 'Gitar' }
