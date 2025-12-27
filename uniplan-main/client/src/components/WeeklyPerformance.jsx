@@ -218,7 +218,9 @@ const WeeklyPerformance = () => {
         return (
             <div className="dashboard-card weekly-card">
                 <div className="weekly-header">
-                    <div className="weekly-kicker">UNIPLAN</div>
+                    <div className="weekly-kicker">
+                        <img src="/uniplan-logo.png" alt="UniPlan" style={{ height: '45px', objectFit: 'contain' }} />
+                    </div>
                     <div className="weekly-title">Haftalik Performans</div>
                     <div className="weekly-subtitle">Yukleniyor...</div>
                 </div>
@@ -229,7 +231,10 @@ const WeeklyPerformance = () => {
     return (
         <div className="dashboard-card weekly-card">
             <div className="weekly-header">
-                <div className="weekly-kicker">UNIPLAN {saving && <span style={{ fontSize: '10px', opacity: 0.7 }}>(kaydediliyor...)</span>}</div>
+                <div className="weekly-kicker">
+                    <img src="/uniplan-logo.png" alt="UniPlan" style={{ height: '45px', objectFit: 'contain' }} />
+                    {saving && <span style={{ fontSize: '10px', opacity: 0.7, marginLeft: '8px' }}>(kaydediliyor...)</span>}
+                </div>
                 <div className="weekly-title">Haftalik Performans</div>
                 <div className="weekly-subtitle">Pazartesi - Pazar</div>
             </div>

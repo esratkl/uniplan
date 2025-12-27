@@ -61,7 +61,7 @@ const RegisterPage = () => {
             <div className="auth-background">
                 <div className="auth-background-gradient"></div>
             </div>
-            
+
             <div className="auth-content-wrapper">
                 <motion.div
                     className="auth-card"
@@ -75,7 +75,9 @@ const RegisterPage = () => {
                     </Link>
 
                     <div className="auth-header">
-                        <Link to="/" className="auth-logo">UniPlan</Link>
+                        <Link to="/" className="auth-logo">
+                            <img src="/uniplan-logo.png" alt="UniPlan" style={{ height: '140px', objectFit: 'contain' }} />
+                        </Link>
                         <h2 className="auth-title">Hesap Oluştur</h2>
                         <p className="auth-subtitle">UniPlan ailesine katılın ve hayatınızı düzenleyin.</p>
                     </div>
@@ -83,13 +85,13 @@ const RegisterPage = () => {
                     {error && (
                         <motion.div
                             className="auth-error"
-                                role="alert"
-                                aria-live="assertive"
-                                initial={{ opacity: 0, y: -6 }}
-                                animate={{ opacity: 1, y: 0 }}
+                            role="alert"
+                            aria-live="assertive"
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
                         >
                             <button aria-label="Kapat" className="auth-error-close" onClick={() => setError('')}>×</button>
-                            <div style={{padding: '0 1.2rem', textAlign: 'center'}}>{error}</div>
+                            <div style={{ padding: '0 1.2rem', textAlign: 'center' }}>{error}</div>
                         </motion.div>
                     )}
 

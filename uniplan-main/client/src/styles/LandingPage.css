@@ -57,12 +57,6 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-size: 1.75rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #3b82f6 0%, #14b8a6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 .landing-nav-links {
@@ -342,8 +336,15 @@
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(30px); }
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(30px);
+    }
 }
 
 /* ==================== FEATURE SHOWCASE SECTION ==================== */
@@ -376,7 +377,7 @@
     direction: rtl;
 }
 
-.showcase-item-reverse > * {
+.showcase-item-reverse>* {
     direction: ltr;
 }
 
@@ -667,12 +668,6 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-size: 1.5rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #3b82f6 0%, #14b8a6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
     margin-bottom: 1rem;
 }
 

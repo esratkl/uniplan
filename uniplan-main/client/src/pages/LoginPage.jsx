@@ -47,7 +47,7 @@ const LoginPage = () => {
             <div className="auth-background">
                 <div className="auth-background-gradient"></div>
             </div>
-            
+
             <div className="auth-content-wrapper">
                 <motion.div
                     className="auth-card"
@@ -61,7 +61,9 @@ const LoginPage = () => {
                     </Link>
 
                     <div className="auth-header">
-                        <Link to="/" className="auth-logo">UniPlan</Link>
+                        <Link to="/" className="auth-logo">
+                            <img src="/uniplan-logo.png" alt="UniPlan" style={{ height: '140px', objectFit: 'contain' }} />
+                        </Link>
                         <h2 className="auth-title">Tekrar Hoşgeldiniz</h2>
                         <p className="auth-subtitle">Hesabınıza giriş yapın ve planlamaya başlayın.</p>
                     </div>
@@ -75,7 +77,7 @@ const LoginPage = () => {
                             animate={{ opacity: 1, y: 0 }}
                         >
                             <button aria-label="Kapat" className="auth-error-close" onClick={() => setError('')}>×</button>
-                            <div style={{padding: '0 1.1rem', textAlign: 'center'}}>{error}</div>
+                            <div style={{ padding: '0 1.1rem', textAlign: 'center' }}>{error}</div>
                         </motion.div>
                     )}
 

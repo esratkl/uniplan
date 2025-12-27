@@ -44,10 +44,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                             exit={{ opacity: 0, x: -20 }}
                             transition={{ duration: 0.2 }}
                         >
-                            <div className="logo-icon">
-                                <Zap size={24} color="white" fill="white" />
-                            </div>
-                            <span className="logo-text">UniPlan</span>
+                            <img src="/uniplan-logo.png" alt="UniPlan Logo" style={{ height: '80px', objectFit: 'contain' }} />
                         </motion.div>
                     )}
                 </AnimatePresence>

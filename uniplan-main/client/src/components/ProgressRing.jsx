@@ -8,7 +8,9 @@ const ProgressRing = ({ percent = 72, label = 'Basari', encouragement = 'Harika 
     return (
         <div className="dashboard-card progress-ring-card">
             <div className="progress-ring-header">
-                <div className="progress-ring-logo">✨ {title}</div>
+                <div className="progress-ring-logo">
+                    ✨ <img src="/uniplan-logo.png" alt="UniPlan" style={{ height: '40px', objectFit: 'contain', verticalAlign: 'middle' }} />
+                </div>
                 <div className="progress-ring-subtitle">Gunluk Ilerleme Takibi</div>
             </div>
 

@@ -72,8 +72,7 @@ const LandingPage = () => {
             >
                 <div className="landing-nav-content">
                     <div className="landing-logo">
-                        <Sparkles size={28} />
-                        <span>UniPlan</span>
+                        <img src="/uniplan-logo.png" alt="UniPlan" style={{ height: '75px', objectFit: 'contain' }} />
                     </div>
                     <nav className="landing-nav-links">
                         {navigationLinks.map((link, index) => (
@@ -505,8 +504,7 @@ const LandingPage = () => {
                     <div className="footer-main">
                         <div className="footer-brand">
                             <div className="footer-logo">
-                                <Sparkles size={32} />
-                                <span>UniPlan</span>
+                                <img src="/uniplan-logo.png" alt="UniPlan" style={{ height: '110px', objectFit: 'contain' }} />
                             </div>
                             <p className="footer-tagline">
                                 Hayatınızı organize edin,<br />hedeflerinize ulaşın.
