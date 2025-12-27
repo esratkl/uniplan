@@ -14,7 +14,7 @@ import ProgressRing from '../components/ProgressRing';
 import TodayMoodWidget from '../components/TodayMoodWidget';
 import LoginCounter from '../components/LoginCounter';
 import DigitalClock from '../components/DigitalClock';
-import ConfettiOverlay from '../components/ConfettiOverlay';
+
 import WeeklyPerformance from '../components/WeeklyPerformance';
 import { dashboardAPI } from '../services/api';
 
@@ -103,7 +103,7 @@ const DashboardHome = () => {
             initial="hidden"
             animate="visible"
         >
-            <ConfettiOverlay />
+
 
             <div className="dashboard-stack">
                 {/* Welcome Section - En üstte */}
@@ -131,8 +131,8 @@ const DashboardHome = () => {
                 <motion.div
                     className="stats-grid"
                     variants={itemVariants}
-                style={{ width: '100%', margin: '0 auto 2.5rem', maxWidth: '1350px' }}
-            >
+                    style={{ width: '100%', margin: '0 auto 2.5rem', maxWidth: '1350px' }}
+                >
                     {stats.map((stat, index) => (
                         <motion.div
                             key={index}
@@ -163,13 +163,13 @@ const DashboardHome = () => {
                             label="Basari"
                             encouragement={
                                 dashboardStats.progressPercent >= 80 ? "Muhtesem gidiyorsun!" :
-                                dashboardStats.progressPercent >= 50 ? "Harika gidiyorsun!" :
-                                dashboardStats.progressPercent >= 25 ? "Devam et, yapabilirsin!" :
-                                "Hadi baslayalim!"
+                                    dashboardStats.progressPercent >= 50 ? "Harika gidiyorsun!" :
+                                        dashboardStats.progressPercent >= 25 ? "Devam et, yapabilirsin!" :
+                                            "Hadi baslayalim!"
                             }
                         />
                     </motion.div>
-                    
+
                     <motion.div variants={itemVariants} style={{ marginTop: '1rem' }}>
                         <WeeklyPerformance />
                     </motion.div>
